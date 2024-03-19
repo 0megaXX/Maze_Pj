@@ -256,7 +256,7 @@ void printMaze2() //미로 확인 함수
 
 int main() {
     srand(time(0)); // 랜덤 시드 초기화
-    system("title 미로 탈출하기");
+    system("title 미로 탈출하기 프로젝트");
 
 
     do {
