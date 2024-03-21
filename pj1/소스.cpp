@@ -17,10 +17,11 @@ int Distance[Size][Size]; // 각 칸까지의 최단 거리를 저장
 bool complete = false;   //정상적인 미로인지 참 거짓
 int playerX = 0, playerY = 0; // 플레이어의 현재 위치
 int MonsterX = -1, MonsterY = -1, Monster_start_count=10; //몬스터의 현재 위치
+int itemX = -1, itemY = -1; //아이탬의 현재 위치
 int ct = 0;
 
 mutex mtx;
-
+int monster_move_time = 1000;
 void initializeMaze() //미로 생성 함수
 {
     complete = false;
@@ -85,7 +86,7 @@ void bfs() //지도의 최단거리를 저장하기 위한 bfs
             int nx = p.x + dx[i];
             int ny = p.y + dy[i];
 
-            if (nx >= 0 && nx < Size && ny >= 0 && ny < Size && maze[nx][ny] == 0 && !visited_bfs[nx][ny]) 
+            if (nx >= 0 && nx < Size && ny >= 0 && ny < Size && maze[nx][ny] != 1 && !visited_bfs[nx][ny]) 
             {
                 visited_bfs[nx][ny] = true;
                 Distance[nx][ny] = Distance[p.x][p.y] + 1;
@@ -118,6 +119,8 @@ void printMaze() //지도띄우기
                  SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 15);//색을 흰색으로 변경
                
             }
+            else if(maze[i][j] == 2)
+                cout << "T "; 
 
             else if (maze[i][j] == 0)
                 cout << "□ ";
@@ -156,7 +159,7 @@ void Monster_trace() //몬스터가 사용자를 향해 가기위한 bfs
             int nx = p.x + dx[i];
             int ny = p.y + dy[i];
 
-            if (nx >= 0 && nx < Size && ny >= 0 && ny < Size && maze[nx][ny] == 0 && !visited_bfs[nx][ny])
+            if (nx >= 0 && nx < Size && ny >= 0 && ny < Size && maze[nx][ny] != 1 && !visited_bfs[nx][ny])
             {
                 if (nx == MonsterX && ny == MonsterY)
                 { 
@@ -186,20 +189,21 @@ void MonsterMovement() { // 몬스터 이동 관리 함수
 
             Monster_trace(); // 몬스터 추적 로직 실행
             printMaze(); // 몬스터 이동 후 미로 상태 출력
-        } if (playerX == MonsterX && playerY == MonsterY)
+        }
+        if (itemX == MonsterX && itemY == MonsterY) // 몬스터가 아이탬을 먹으면 아이탬 사라짐
+        {
+            maze[itemX][itemY] = 0;
+            itemX = -1;
+            itemY = -1;
+        }
+        if (playerX == MonsterX && playerY == MonsterY)
         {
             cout << "---- 미로 탈출 실패 ... ----" << endl << endl << "https://velog.io/@270pp13/posts";
             exit(0);
         }
-
-        Sleep(1000); // 1초 대기
+        Sleep(monster_move_time); // 1초 대기
     }
-   
-
-
 }
-
-
 
 
 void movePlayer() // 키입력받고 위치 이동시키기
@@ -212,25 +216,36 @@ void movePlayer() // 키입력받고 위치 이동시키기
     Monster_start_count--;
     switch (key) {
     case 'w': // 위로 이동
-        if (playerX > 0 && maze[playerX - 1][playerY] == 0)
+        if (playerX > 0 && maze[playerX - 1][playerY] != 1)
             playerX--;
         break;
     case 's': // 아래로 이동
-        if (playerX < Size - 1 && maze[playerX + 1][playerY] == 0)
+        if (playerX < Size - 1 && maze[playerX + 1][playerY] != 1)
             playerX++;
         break;
     case 'a': // 왼쪽으로 이동
-        if (playerY > 0 && maze[playerX][playerY - 1] == 0)
+        if (playerY > 0 && maze[playerX][playerY - 1] != 1)
             playerY--;
         break;
     case 'd': // 오른쪽으로 이동
-        if (playerY < Size - 1 && maze[playerX][playerY + 1] == 0)
+        if (playerY < Size - 1 && maze[playerX][playerY + 1] != 1)
             playerY++;
         break;
     }
-
-
 }
+
+void placeItem()  // 아이템을 배치할 수 있는 위치를 찾기
+{
+   
+    do 
+    {
+        itemX = rand() % (Size - 2) + 1; // 0과 Size-1을 제외한 위치
+        itemY = rand() % (Size - 2) + 1;
+    } while (maze[itemX][itemY] != 0); // 길인 위치를 찾을 때까지 반복
+
+    maze[itemX][itemY] = 2; // 아이템을 2로 표시(0은 길, 1은 벽)
+}
+
 
  /*void printMaze() //미로 확인 함수
 {
@@ -266,7 +281,7 @@ int main() {
 
     //bfs();
     thread monsterThread(MonsterMovement);   // 몬스터 이동을 관리하는 스레드 생성 및 시작
-
+    placeItem();
     while ((playerX != Size - 1 || playerY != Size - 1) && !( playerX == MonsterX && playerY == MonsterY))
     {
         ct++;
@@ -277,6 +292,13 @@ int main() {
             break;
         }
         movePlayer();
+        if (playerX == itemX && playerY == itemY)
+        {
+            maze[itemX][itemY] = 0;
+            itemX = -1;
+            itemY = -1;
+            monster_move_time = 2000;
+        }
     }
 
     monsterThread.detach(); //종료 대기
